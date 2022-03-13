@@ -10,6 +10,9 @@ using std::stack;
 using std::cin;
 using std::cout;
 using std::endl;
+using std::map;
+using std::pair;
+
 
 enum LEXEM_TYPE {
 	NUMBER, OP, VAR
@@ -17,16 +20,14 @@ enum LEXEM_TYPE {
 
 enum OPERATOR {
 	LBRACKET, RBRACKET,
-	ASSIGN,
 	PLUS, MINUS,
-	MULTIPLY
+	MULTIPLY, ASSIGN
 };
 
 int PRIORITY[] = {
 	-1, -1,
-	0,
 	1, 1,
-	2
+	2, 0
 };
 
 
@@ -35,6 +36,7 @@ class Lexem {
 public:
 	Lexem() {}
 	LEXEM_TYPE getLexemType();
+	void setLexemType(LEXEM_TYPE type);
 	friend vector<Lexem *> parseLexem(string codeline);
 };
 
@@ -58,33 +60,31 @@ public:
 
 class Variable: public Lexem {
 	string name;
-	int value;
+	//int value;
 public:
 	Variable(const string & name);
 	int getValue();
 	void setValue(int value);
 };
 
-//map<Variable *, int> vars;
+map<string, Variable *> varmap;
 
 LEXEM_TYPE Lexem::getLexemType() {
 	return lexem_type;
 }
 
 
+void Lexem::setLexemType(LEXEM_TYPE type) {
+	lexem_type = type;
+}
+
 /////////////////////// class Variable methods ///////////////////////
 
 
 Variable::Variable(const string & name) {
 	this->name = name;
-}
-
-int Variable::getValue() {
-	return value;
-}
-
-void Variable::setValue(int value) {
-	this->value = value;
+	varmap.insert(pair<string, Variable *>(name, this));
+	Lexem::setLexemType(VAR);
 }
 
 
@@ -97,6 +97,7 @@ Number::Number() : value(0) {
 
 Number::Number(int someValue) {
 	value = someValue;
+	Lexem::setLexemType(NUMBER);
 }
 
 int Number::getValue() {
@@ -110,6 +111,7 @@ int Number::getValue() {
 
 Operator::Operator(OPERATOR status) {
 	opertype = status;
+	Lexem::setLexemType(OP);
 }
 
 OPERATOR Operator::getType() {
@@ -139,6 +141,8 @@ int Operator::evaluate(const Number & left, const Number & right) {
 
 
 
+
+
 bool isDigit(char ch) {
 	if (ch >= '0' && ch <= '9') 
 		return true;
@@ -151,40 +155,89 @@ bool isLetter(char ch) {
 	return false;
 }
 
+char OPERATOR_STR[] = {
+	'(', ')', '+', '-', '*'
+};
+
+Operator *check_operator(string codeline, int i) {
+
+	for (int j = 0; j < sizeof(OPERATOR_STR); j++) {
+		if (codeline[i] == OPERATOR_STR[j]) {
+			return new Operator(OPERATOR(j));
+			//infix[infix.size() - 1]->lexem_type = OP; // вместо этого запихать в конструктор эти строки
+		}
+	}
+	return nullptr;
+}
+
+Number *check_number(string codeline, int *i) {
+	if (isDigit(codeline[(*i)])) {
+		int number = 0;
+		while (isDigit(codeline[(*i)])) {
+			number = number * 10 + codeline[(*i)] - '0';
+			(*i)++;
+		}
+		(*i)--;
+	//	cout << number << endl;
+		return new Number(number);
+	}
+	return nullptr;
+}
+
+
+/*for (int i = 0; i < codeline.size(); i++) {
+	Operator *ptr_o = check_operator(codeline, &i);
+	if (ptr_o) {
+		infix.push_back(ptr_o);
+	}
+	Number *ptr_n = check_number(codeline, &i);
+	if (ptr_n) {
+		infix.push_back(ptr_n);
+	}
+}*/
 
 vector<Lexem *> parseLexem(string codeline) {
+	vector<Lexem *> infix;
+	for (int i = 0; i < codeline.size(); i++) {
+		Operator *ptr_o = check_operator(codeline, i);
+		if (ptr_o) {
+			infix.push_back(ptr_o);
+		}
+		Number *ptr_n = check_number(codeline, &i);
+		if (ptr_n) {
+			infix.push_back(ptr_n);
+		}
+	}
+	return infix;
+}
+
+/*vector<Lexem *> parseLexem(string codeline) {
 	vector<Lexem *> infix;
 	for (int i = 0; i < codeline.size(); i++) {
 		if (codeline[i] == ' ' || codeline[i] == '\t')
 			continue;
 		if (codeline[i] == '+') {
 			infix.push_back(new Operator(PLUS));
-			infix[infix.size() - 1]->lexem_type = OP;
 			continue;
 		}
 		if (codeline[i] == '-') {
 			infix.push_back(new Operator(MINUS));
-			infix[infix.size() - 1]->lexem_type = OP;
 			continue;
 		}
 		if (codeline[i] == '*') {
 			infix.push_back(new Operator(MULTIPLY));
-			infix[infix.size() - 1]->lexem_type = OP;
 			continue;
 		}
 		if (codeline[i] == '(') {
 			infix.push_back(new Operator(LBRACKET));
-			infix[infix.size() - 1]->lexem_type = OP;
 			continue;
 		}
 		if (codeline[i] == ')') {
 			infix.push_back(new Operator(RBRACKET));
-			infix[infix.size() - 1]->lexem_type = OP;
 			continue;
 		}
 		if (codeline[i] == '=') {
 			infix.push_back(new Operator(ASSIGN));
-			infix[infix.size() - 1]->lexem_type = OP;
 			continue;
 		}
 		if (isDigit(codeline[i])) {
@@ -195,18 +248,20 @@ vector<Lexem *> parseLexem(string codeline) {
 			}
 			i--;
 			infix.push_back(new Number(number));
-			infix[infix.size() - 1]->lexem_type = NUMBER;
 			continue;
 		}
 		if (isLetter(codeline[i])) {
 			string tmp;
-			tmp[0] = codeline[i];
+			int j = 0;
+			while (isLetter(codeline[i])) {
+				tmp.push_back(codeline[i++]);
+			}
+			i--;
 			infix.push_back(new Variable(tmp));
-			infix[infix.size() - 1]->lexem_type = VAR;
 		}
 	}
 	return infix;
-}
+}*/
 
 bool isLeftAssociated(OPERATOR opType) {
 	if (opType == ASSIGN)
@@ -274,6 +329,7 @@ vector<Lexem *> buildPostfix(vector<Lexem *> infix) {
 int evaluatePostfix(vector<Lexem *> postfix) {
 	stack <int> stack;
 	for (int i = 0; i < postfix.size(); i++) {
+		//if ()
 		if (postfix[i]->getLexemType() == NUMBER) {
 			stack.push(static_cast<Number *>(postfix[i])->getValue());
 			continue;
@@ -298,10 +354,12 @@ int main() {
 	int value;
 	while (std::getline(cin, codeline)) {
 		infix = parseLexem(codeline);
-		cout << infix.size();
+		//cout << infix.size();// << ' ' << varmap.size();
+		//cout << static_cast<Operator *>(infix[1])->getType();
 		postfix = buildPostfix(infix);
-		//value = evaluatePostfix(postfix);
-		//cout << value << endl;
+		//cout << postfix.size();// << ' ' << varmap.size();
+		value = evaluatePostfix(postfix);
+		cout << value << endl;
 	}
 	return 0;
 }
