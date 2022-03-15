@@ -48,11 +48,15 @@ public:
 	int getValue();
 };
 
+class Variable;
+
 class Operator: public Lexem {
 	OPERATOR opertype;
 public:
 	Operator();
 	Operator(OPERATOR status);
+	int evaluateNum(int a, int b);
+	int evaluateVar(Variable *var, int b);
 	OPERATOR getType();
 	int getPriority();
 	int evaluate(Lexem *left, Lexem *right);
@@ -129,62 +133,48 @@ int Operator::getPriority() {
 	return PRIORITY[opertype];
 }
 
+int Operator::evaluateNum(int a, int b) {
+	switch(this->opertype) {
+		case PLUS:
+			return a + b;
+		case MINUS:
+			return a - b;
+		case MULTIPLY:
+			return a * b;
+		case ASSIGN:
+			return b;
+	}
+
+}
+
+int Operator::evaluateVar(Variable *var, int b) {
+	switch(this->opertype) {
+		case PLUS:
+			return var->getValue() + b;
+		case MINUS:
+			return var->getValue() - b;
+		case MULTIPLY:
+			return var->getValue() * b;
+		case ASSIGN:
+			var->setValue(b);
+			return b;
+	}
+}
+
 int Operator::evaluate(Lexem *left, Lexem *right) {
 	LEXEM_TYPE l = left->getLexemType(), r = right->getLexemType();
 	if (l == NUMBER && r == NUMBER) {
-		switch(opertype) {
-		case PLUS:
-			return static_cast<Number *>(left)->getValue() + static_cast<Number *>(right)->getValue();
-		case MINUS:
-			return static_cast<Number *>(left)->getValue() - static_cast<Number *>(right)->getValue();
-		case MULTIPLY:
-			return static_cast<Number *>(left)->getValue() * static_cast<Number *>(right)->getValue();
-		case ASSIGN:
-			return static_cast<Number *>(right)->getValue();
-		}	
+		return evaluateNum(static_cast<Number *>(left)->getValue(), static_cast<Number *>(right)->getValue());	
 	}
 	if (l == NUMBER && r == VAR) {
-		switch(opertype) {
-			case PLUS:
-				return static_cast<Number *>(left)->getValue() + static_cast<Variable *>(right)->getValue();
-			case MINUS:
-				return static_cast<Number *>(left)->getValue() - static_cast<Variable *>(right)->getValue();
-			case MULTIPLY:
-				return static_cast<Number *>(left)->getValue() * static_cast<Variable *>(right)->getValue();
-			case ASSIGN:
-				return static_cast<Variable *>(right)->getValue();
-		}
+		return evaluateNum(static_cast<Number *>(left)->getValue(), static_cast<Variable *>(right)->getValue());
 	}
 	if (l == VAR && r == NUMBER) {
-		switch(opertype) {
-			case PLUS:
-				return static_cast<Variable *>(left)->getValue() + static_cast<Number *>(right)->getValue();
-			case MINUS:
-				return static_cast<Variable *>(left)->getValue() - static_cast<Number *>(right)->getValue();
-			case MULTIPLY:
-				return static_cast<Variable *>(left)->getValue() * static_cast<Number *>(right)->getValue();
-			case ASSIGN:
-				static_cast<Variable *>(left)->setValue(static_cast<Number *>(right)->getValue());
-				return static_cast<Number *>(right)->getValue();
-
-		}
+		return evaluateVar(static_cast<Variable *>(left), static_cast<Number *>(right)->getValue());
 	}
 	if (l == VAR && r == VAR) {
-		switch(opertype) {
-			case PLUS:
-				return static_cast<Variable *>(left)->getValue() + static_cast<Variable *>(right)->getValue();
-			case MINUS:
-				return static_cast<Variable *>(left)->getValue() - static_cast<Variable *>(right)->getValue();
-			case MULTIPLY:
-				return static_cast<Variable *>(left)->getValue() * static_cast<Variable *>(right)->getValue();
-			case ASSIGN:
-				static_cast<Variable *>(left)->setValue(static_cast<Variable *>(right)->getValue());
-				return static_cast<Variable *>(right)->getValue();
-		}
+		return evaluateVar(static_cast<Variable *>(left), static_cast<Variable *>(right)->getValue());
 	}
-	
-
-
 }
 
 
@@ -301,7 +291,6 @@ vector<Lexem *> buildPostfix(vector<Lexem *> infix) {
 				stack.pop();
 				continue;
 			}
-			
 			//if we see binary operand
 			if(stack.size() != 0) {
 				Lexem *tmp = stack.top();
