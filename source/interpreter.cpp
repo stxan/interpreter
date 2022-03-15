@@ -55,7 +55,7 @@ public:
 	Operator(OPERATOR status);
 	OPERATOR getType();
 	int getPriority();
-	int evaluate(const Number & left, const Number & right);
+	int evaluate(Lexem *left, Lexem *right);
 };
 
 class Variable: public Lexem {
@@ -67,7 +67,7 @@ public:
 	void setValue(int value);
 };
 
-map<string, Variable *> varmap;
+map<string, int> varmap;
 
 LEXEM_TYPE Lexem::getLexemType() {
 	return lexem_type;
@@ -80,10 +80,17 @@ void Lexem::setLexemType(LEXEM_TYPE type) {
 
 /////////////////////// class Variable methods ///////////////////////
 
+int Variable::getValue() {
+	return varmap[name];
+}
+
+void Variable::setValue(int value) {
+	varmap[name] = value;
+}
 
 Variable::Variable(const string & name) {
 	this->name = name;
-	varmap.insert(pair<string, Variable *>(name, this));
+	varmap.insert(pair<string, int>(name, 0));
 	Lexem::setLexemType(VAR);
 }
 
@@ -122,15 +129,60 @@ int Operator::getPriority() {
 	return PRIORITY[opertype];
 }
 
-int Operator::evaluate(const Number & left, const Number & right) {
-	switch(opertype) {
-	case PLUS:
-		return static_cast<Number>(left).getValue() + static_cast<Number>(right).getValue();
-	case MINUS:
-		return static_cast<Number>(left).getValue() - static_cast<Number>(right).getValue();
-	case MULTIPLY:
-		return static_cast<Number>(left).getValue() * static_cast<Number>(right).getValue();
+int Operator::evaluate(Lexem *left, Lexem *right) {
+	LEXEM_TYPE l = left->getLexemType(), r = right->getLexemType();
+	if (l == NUMBER && r == NUMBER) {
+		switch(opertype) {
+		case PLUS:
+			return static_cast<Number *>(left)->getValue() + static_cast<Number *>(right)->getValue();
+		case MINUS:
+			return static_cast<Number *>(left)->getValue() - static_cast<Number *>(right)->getValue();
+		case MULTIPLY:
+			return static_cast<Number *>(left)->getValue() * static_cast<Number *>(right)->getValue();
+		case ASSIGN:
+			return static_cast<Number *>(right)->getValue();
+		}	
 	}
+	if (l == NUMBER && r == VAR) {
+		switch(opertype) {
+			case PLUS:
+				return static_cast<Number *>(left)->getValue() + static_cast<Variable *>(right)->getValue();
+			case MINUS:
+				return static_cast<Number *>(left)->getValue() - static_cast<Variable *>(right)->getValue();
+			case MULTIPLY:
+				return static_cast<Number *>(left)->getValue() * static_cast<Variable *>(right)->getValue();
+			case ASSIGN:
+				return static_cast<Variable *>(right)->getValue();
+		}
+	}
+	if (l == VAR && r == NUMBER) {
+		switch(opertype) {
+			case PLUS:
+				return static_cast<Variable *>(left)->getValue() + static_cast<Number *>(right)->getValue();
+			case MINUS:
+				return static_cast<Variable *>(left)->getValue() - static_cast<Number *>(right)->getValue();
+			case MULTIPLY:
+				return static_cast<Variable *>(left)->getValue() * static_cast<Number *>(right)->getValue();
+			case ASSIGN:
+				static_cast<Variable *>(left)->setValue(static_cast<Number *>(right)->getValue());
+				return static_cast<Number *>(right)->getValue();
+
+		}
+	}
+	if (l == VAR && r == VAR) {
+		switch(opertype) {
+			case PLUS:
+				return static_cast<Variable *>(left)->getValue() + static_cast<Variable *>(right)->getValue();
+			case MINUS:
+				return static_cast<Variable *>(left)->getValue() - static_cast<Variable *>(right)->getValue();
+			case MULTIPLY:
+				return static_cast<Variable *>(left)->getValue() * static_cast<Variable *>(right)->getValue();
+			case ASSIGN:
+				static_cast<Variable *>(left)->setValue(static_cast<Variable *>(right)->getValue());
+				return static_cast<Variable *>(right)->getValue();
+		}
+	}
+	
 
 
 }
@@ -156,7 +208,7 @@ bool isLetter(char ch) {
 }
 
 char OPERATOR_STR[] = {
-	'(', ')', '+', '-', '*'
+	'(', ')', '+', '-', '*', '='
 };
 
 Operator *check_operator(string codeline, int i) {
@@ -164,7 +216,6 @@ Operator *check_operator(string codeline, int i) {
 	for (int j = 0; j < sizeof(OPERATOR_STR); j++) {
 		if (codeline[i] == OPERATOR_STR[j]) {
 			return new Operator(OPERATOR(j));
-			//infix[infix.size() - 1]->lexem_type = OP; // вместо этого запихать в конструктор эти строки
 		}
 	}
 	return nullptr;
@@ -178,23 +229,25 @@ Number *check_number(string codeline, int *i) {
 			(*i)++;
 		}
 		(*i)--;
-	//	cout << number << endl;
 		return new Number(number);
 	}
 	return nullptr;
 }
 
+Variable *check_var(string codeline, int *i) {
+	if (isLetter(codeline[(*i)])) {
+		string tmp;
+		while (isLetter(codeline[(*i)])) {
+			tmp.push_back(codeline[(*i)]);
+			(*i)++;
+		}
+		(*i)--;
+		return new Variable(tmp);
+	}
+	return nullptr;
+}
 
-/*for (int i = 0; i < codeline.size(); i++) {
-	Operator *ptr_o = check_operator(codeline, &i);
-	if (ptr_o) {
-		infix.push_back(ptr_o);
-	}
-	Number *ptr_n = check_number(codeline, &i);
-	if (ptr_n) {
-		infix.push_back(ptr_n);
-	}
-}*/
+
 
 vector<Lexem *> parseLexem(string codeline) {
 	vector<Lexem *> infix;
@@ -207,61 +260,14 @@ vector<Lexem *> parseLexem(string codeline) {
 		if (ptr_n) {
 			infix.push_back(ptr_n);
 		}
+		Variable *ptr_v = check_var(codeline, &i);
+		if (ptr_v) {
+			infix.push_back(ptr_v);
+		}
 	}
 	return infix;
 }
 
-/*vector<Lexem *> parseLexem(string codeline) {
-	vector<Lexem *> infix;
-	for (int i = 0; i < codeline.size(); i++) {
-		if (codeline[i] == ' ' || codeline[i] == '\t')
-			continue;
-		if (codeline[i] == '+') {
-			infix.push_back(new Operator(PLUS));
-			continue;
-		}
-		if (codeline[i] == '-') {
-			infix.push_back(new Operator(MINUS));
-			continue;
-		}
-		if (codeline[i] == '*') {
-			infix.push_back(new Operator(MULTIPLY));
-			continue;
-		}
-		if (codeline[i] == '(') {
-			infix.push_back(new Operator(LBRACKET));
-			continue;
-		}
-		if (codeline[i] == ')') {
-			infix.push_back(new Operator(RBRACKET));
-			continue;
-		}
-		if (codeline[i] == '=') {
-			infix.push_back(new Operator(ASSIGN));
-			continue;
-		}
-		if (isDigit(codeline[i])) {
-			int number = 0;
-			while (isDigit(codeline[i])) {
-				number = number * 10 + codeline[i] - '0';
-				i++;
-			}
-			i--;
-			infix.push_back(new Number(number));
-			continue;
-		}
-		if (isLetter(codeline[i])) {
-			string tmp;
-			int j = 0;
-			while (isLetter(codeline[i])) {
-				tmp.push_back(codeline[i++]);
-			}
-			i--;
-			infix.push_back(new Variable(tmp));
-		}
-	}
-	return infix;
-}*/
 
 bool isLeftAssociated(OPERATOR opType) {
 	if (opType == ASSIGN)
@@ -276,6 +282,7 @@ vector<Lexem *> buildPostfix(vector<Lexem *> infix) {
 	for (int i = 0; i < infix.size(); i++) {
 		if ((infix[i]->getLexemType()) == NUMBER || (infix[i]->getLexemType()) == VAR) {
 			postfix.push_back(infix[i]);
+			continue;
 		}
 
 		else if((infix[i]->getLexemType()) == OP) {
@@ -296,7 +303,6 @@ vector<Lexem *> buildPostfix(vector<Lexem *> infix) {
 			}
 			
 			//if we see binary operand
-
 			if(stack.size() != 0) {
 				Lexem *tmp = stack.top();
 				if (isLeftAssociated(operType)) {
@@ -310,6 +316,7 @@ vector<Lexem *> buildPostfix(vector<Lexem *> infix) {
 				else {
 					while (static_cast<Operator *>(tmp)->getPriority() > 
 									static_cast<Operator *>(infix[i])->getPriority()) {
+
 						postfix.push_back(tmp);
 						stack.pop();
 						tmp = stack.top();
@@ -319,30 +326,31 @@ vector<Lexem *> buildPostfix(vector<Lexem *> infix) {
 			stack.push(infix[i]);
 		}
 	}
-	while (stack.size() > 0) {
-		postfix.push_back(stack.top());
-		stack.pop();
+	if (stack.size() != 0) {
+		while (stack.size() > 0) {
+			postfix.push_back(stack.top());
+			stack.pop();
+		}
 	}
 	return postfix;
 }
 
 int evaluatePostfix(vector<Lexem *> postfix) {
-	stack <int> stack;
+	stack <Lexem *> stack;
 	for (int i = 0; i < postfix.size(); i++) {
-		//if ()
-		if (postfix[i]->getLexemType() == NUMBER) {
-			stack.push(static_cast<Number *>(postfix[i])->getValue());
+		if (postfix[i]->getLexemType() == NUMBER || postfix[i]->getLexemType() == VAR) {
+			stack.push(postfix[i]);
 			continue;
 		}
 		if (postfix[i]->getLexemType() == OP) {
-			int value2 = stack.top();
+			Lexem *value2 = stack.top();
 			stack.pop();
-			int value1 = stack.top();
+			Lexem *value1 = stack.top();
 			stack.pop();
-			stack.push(static_cast<Operator *>(postfix[i])->evaluate(Number(value1), Number(value2)));
+			stack.push(new Number(static_cast<Operator *>(postfix[i])->evaluate(value1, value2)));
 		}
 	}
-	int ans = stack.top();
+	int ans = static_cast<Number *>(stack.top())->getValue();
 	stack.pop();
 	return ans;
 }
@@ -357,7 +365,8 @@ int main() {
 		//cout << infix.size();// << ' ' << varmap.size();
 		//cout << static_cast<Operator *>(infix[1])->getType();
 		postfix = buildPostfix(infix);
-		//cout << postfix.size();// << ' ' << varmap.size();
+		//cout << postfix.size();
+		//cout << postfix.size() << ' ' << varmap.size();
 		value = evaluatePostfix(postfix);
 		cout << value << endl;
 	}
