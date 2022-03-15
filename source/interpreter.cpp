@@ -234,8 +234,6 @@ Number *check_number(string codeline, int *i) {
 	return nullptr;
 }
 
-<<<<<<< HEAD
-=======
 Variable *check_var(string codeline, int *i) {
 	if (isLetter(codeline[(*i)])) {
 		string tmp;
@@ -250,7 +248,6 @@ Variable *check_var(string codeline, int *i) {
 }
 
 
->>>>>>> dev-main
 
 vector<Lexem *> parseLexem(string codeline) {
 	vector<Lexem *> infix;
@@ -365,12 +362,11 @@ int main() {
 	int value;
 	while (std::getline(cin, codeline)) {
 		infix = parseLexem(codeline);
+		//cout << infix.size();// << ' ' << varmap.size();
+		//cout << static_cast<Operator *>(infix[1])->getType();
 		postfix = buildPostfix(infix);
-<<<<<<< HEAD
-=======
 		//cout << postfix.size();
 		//cout << postfix.size() << ' ' << varmap.size();
->>>>>>> dev-main
 		value = evaluatePostfix(postfix);
 		cout << value << endl;
 	}
