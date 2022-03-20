@@ -64,6 +64,7 @@ public:
 
 class Variable: public Lexem {
 	string name;
+	//int value;
 public:
 	Variable(const string & name);
 	int getValue();
@@ -317,44 +318,7 @@ vector<Lexem *> buildPostfix(vector<Lexem *> infix) {
 		}
 
 		else if((infix[i]->getLexemType()) == OP) {
-<<<<<<< HEAD
-			OPERATOR operType = static_cast<Operator *>(infix[i])->getType();
-			if (operType == LBRACKET) {
-				stack.push(infix[i]);
-				continue;
-			}
-			if (operType == RBRACKET) {
-				Lexem *tmp = stack.top();
-				while (static_cast<Operator *>(tmp)->getType() != LBRACKET) {
-					postfix.push_back(tmp);
-					stack.pop();
-					tmp = stack.top();
-				}
-				stack.pop();
-				continue;
-			}
-			//if we see binary operand
-			if(stack.size() != 0) {
-				if (isLeftAssociated(operType)) {
-					while (stack.size() != 0 && static_cast<Operator *>(stack.top())->getPriority() >= 
-									static_cast<Operator *>(infix[i])->getPriority()) {
-						postfix.push_back(stack.top());
-						stack.pop();
-					}
-				}
-				else {
-					while (stack.size() != 0 && static_cast<Operator *>(stack.top())->getPriority() > 
-									static_cast<Operator *>(infix[i])->getPriority()) {
-
-						postfix.push_back(stack.top());
-						stack.pop();
-					}
-				}
-			}
-			stack.push(infix[i]);
-=======
 			OperBuildPosfix(stack, infix, postfix, i);
->>>>>>> dev-main
 		}
 	}
 	if (stack.size() != 0) {
@@ -393,7 +357,11 @@ int main() {
 	int value;
 	while (std::getline(cin, codeline)) {
 		infix = parseLexem(codeline);
+		//cout << infix.size();// << ' ' << varmap.size();
+		//cout << static_cast<Operator *>(infix[1])->getType();
 		postfix = buildPostfix(infix);
+		//cout << postfix.size();
+		//cout << postfix.size() << ' ' << varmap.size();
 		value = evaluatePostfix(postfix);
 		cout << value << endl;
 	}
