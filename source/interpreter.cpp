@@ -259,10 +259,52 @@ vector<Lexem *> parseLexem(string codeline) {
 }
 
 
-bool isLeftAssociated(OPERATOR opType) {
+bool isRightAssociated(OPERATOR opType) {
 	if (opType == ASSIGN)
 		return true;
 	return false;
+}
+
+void binaryOperBuildPostfix(stack<Lexem *> & stack, vector<Lexem *> & infix, vector<Lexem *> & postfix, OPERATOR operType, int i) {
+	if(stack.size() != 0) {
+		if (isRightAssociated(operType)) {
+			while (stack.size() != 0 && static_cast<Operator *>(stack.top())->getPriority() > 
+							static_cast<Operator *>(infix[i])->getPriority()) {
+				postfix.push_back(stack.top());
+				stack.pop();
+			}
+		}
+		else {
+			while (stack.size() != 0 && static_cast<Operator *>(stack.top())->getPriority() >= 
+							static_cast<Operator *>(infix[i])->getPriority()) {
+
+				postfix.push_back(stack.top());
+				stack.pop();
+			}
+		}
+	}
+}
+
+void OperBuildPosfix(stack<Lexem *> & stack, vector<Lexem *> & infix, vector<Lexem *> & postfix, int i) {
+	OPERATOR operType = static_cast<Operator *>(infix[i])->getType(	);
+	if (operType == LBRACKET) {
+		stack.push(infix[i]);
+		return;
+	}
+	if (operType == RBRACKET) {
+		Lexem *tmp = stack.top();
+		while (static_cast<Operator *>(tmp)->getType() != LBRACKET) {
+			postfix.push_back(tmp);
+			stack.pop();
+			tmp = stack.top();
+		}
+		stack.pop();
+		return;
+	}
+
+	binaryOperBuildPostfix(stack, infix, postfix, operType, i);
+	
+	stack.push(infix[i]);
 }
 
 vector<Lexem *> buildPostfix(vector<Lexem *> infix) {
@@ -276,43 +318,7 @@ vector<Lexem *> buildPostfix(vector<Lexem *> infix) {
 		}
 
 		else if((infix[i]->getLexemType()) == OP) {
-			OPERATOR operType = static_cast<Operator *>(infix[i])->getType();
-			if (operType == LBRACKET) {
-				stack.push(infix[i]);
-				continue;
-			}
-			if (operType == RBRACKET) {
-				Lexem *tmp = stack.top();
-				while (static_cast<Operator *>(tmp)->getType() != LBRACKET) {
-					postfix.push_back(tmp);
-					stack.pop();
-					tmp = stack.top();
-				}
-				stack.pop();
-				continue;
-			}
-			//if we see binary operand
-			if(stack.size() != 0) {
-				Lexem *tmp = stack.top();
-				if (isLeftAssociated(operType)) {
-					while (static_cast<Operator *>(tmp)->getPriority() >= 
-									static_cast<Operator *>(infix[i])->getPriority()) {
-						postfix.push_back(tmp);
-						stack.pop();
-						tmp = stack.top();
-					}
-				}
-				else {
-					while (static_cast<Operator *>(tmp)->getPriority() > 
-									static_cast<Operator *>(infix[i])->getPriority()) {
-
-						postfix.push_back(tmp);
-						stack.pop();
-						tmp = stack.top();
-					}
-				}
-			}
-			stack.push(infix[i]);
+			OperBuildPosfix(stack, infix, postfix, i);
 		}
 	}
 	if (stack.size() != 0) {
