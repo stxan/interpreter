@@ -20,14 +20,53 @@ enum LEXEM_TYPE {
 
 enum OPERATOR {
 	LBRACKET, RBRACKET,
+	ASSIGN,
+	OR,
+	AND,
+	BITOR,
+	XOR,
+	BITAND,
+	EQ, NEQ,
+	LEQ, SHL,
+	GEQ, SHR,
+	LT, GT,
+	/*LEQ, LT,
+	GEQ, GT,
+	SHL, SHR,*/
 	PLUS, MINUS,
-	MULTIPLY, ASSIGN
+	MULT, DIV, MOD
 };
 
 int PRIORITY[] = {
 	-1, -1,
-	1, 1,
-	2, 0
+	0,
+	1,
+	2,
+	3,
+	4,
+	5,
+	6, 6,
+	7, 8,
+	7, 8,
+	7, 7,
+	9, 9,
+	10, 10, 10
+};
+
+string OPERTEXT[] = {
+	"(", ")",
+	"=",
+	"or",
+	"and",
+	"|",
+	"^",
+	"&",
+	"==", "!=",
+	"<=", "<<",
+	">=", ">>",
+	"<", ">",
+	"+", "-",
+	"*", "/", "%"
 };
 
 
@@ -133,16 +172,48 @@ int Operator::getPriority() {
 	return PRIORITY[opertype];
 }
 
+
 int Operator::evaluateNum(int a, int b) {
 	switch(this->opertype) {
 		case PLUS:
 			return a + b;
 		case MINUS:
 			return a - b;
-		case MULTIPLY:
+		case MULT:
 			return a * b;
 		case ASSIGN:
 			return b;
+		case OR:
+			return a or b;
+		case AND:
+			return a and b;
+		case BITOR:
+			return a | b;
+		case XOR:
+			return a ^ b;
+		case BITAND:
+			return a & b;
+		case EQ:
+			return a == b;
+		case NEQ:
+			return a != b;
+		case LEQ:
+			return a <= b;
+		case LT:
+			return a < b;
+		case GEQ:
+			return a >= b;
+		case GT:
+			return a > b;
+		case SHL:
+			return a << b;
+		case SHR:
+			return a >> b;
+		case DIV:
+			return (b == 0) ? 0 : (a / b);
+		case MOD:
+			return a % b;
+
 	}
 
 }
@@ -153,11 +224,41 @@ int Operator::evaluateVar(Variable *var, int b) {
 			return var->getValue() + b;
 		case MINUS:
 			return var->getValue() - b;
-		case MULTIPLY:
+		case MULT:
 			return var->getValue() * b;
 		case ASSIGN:
 			var->setValue(b);
 			return b;
+		case OR:
+			return var->getValue() or b;
+		case AND:
+			return var->getValue() and b;
+		case BITOR:
+			return var->getValue() | b;
+		case XOR:
+			return var->getValue() ^ b;
+		case BITAND:
+			return var->getValue() & b;
+		case EQ:
+			return var->getValue() == b;
+		case NEQ:
+			return var->getValue() != b;
+		case LEQ:
+			return var->getValue() <= b;
+		case LT:
+			return var->getValue() < b;
+		case GEQ:
+			return var->getValue() >= b;
+		case GT:
+			return var->getValue() > b;
+		case SHL:
+			return var->getValue() << b;
+		case SHR:
+			return var->getValue() >> b;
+		case DIV:
+			return (b == 0) ? 0 : (var->getValue() / b);
+		case MOD:
+			return var->getValue() % b;
 	}
 }
 
@@ -197,15 +298,15 @@ bool isLetter(char ch) {
 	return false;
 }
 
-char OPERATOR_STR[] = {
-	'(', ')', '+', '-', '*', '='
-};
 
-Operator *check_operator(string codeline, int i) {
-
-	for (int j = 0; j < sizeof(OPERATOR_STR); j++) {
-		if (codeline[i] == OPERATOR_STR[j]) {
-			return new Operator(OPERATOR(j));
+Operator *check_operator(string codeline, int *i) {
+	int n = sizeof(OPERTEXT) / sizeof(string);
+	for (int op = 0; op < n; op++) {
+		string subcodeline = 
+			codeline.substr(*i, OPERTEXT[op].size());
+		if (OPERTEXT[op] == subcodeline) {
+			(*i) += subcodeline.size() - 1;
+			return new Operator(OPERATOR(op));
 		}
 	}
 	return nullptr;
@@ -242,18 +343,26 @@ Variable *check_var(string codeline, int *i) {
 vector<Lexem *> parseLexem(string codeline) {
 	vector<Lexem *> infix;
 	for (int i = 0; i < codeline.size(); i++) {
-		Operator *ptr_o = check_operator(codeline, i);
-		if (ptr_o) {
-			infix.push_back(ptr_o);
+		if (codeline[i] == ' ' || codeline[i] == '\t') {
+			continue;
 		}
 		Number *ptr_n = check_number(codeline, &i);
 		if (ptr_n) {
 			infix.push_back(ptr_n);
 		}
-		Variable *ptr_v = check_var(codeline, &i);
-		if (ptr_v) {
-			infix.push_back(ptr_v);
+		else {
+			Variable *ptr_v = check_var(codeline, &i);
+			if (ptr_v) {
+				infix.push_back(ptr_v);
+			}
+			else {
+				Operator *ptr_o = check_operator(codeline, &i);
+				if (ptr_o) {
+					infix.push_back(ptr_o);
+				}
+			}
 		}
+		
 	}
 	return infix;
 }
@@ -357,11 +466,17 @@ int main() {
 	int value;
 	while (std::getline(cin, codeline)) {
 		infix = parseLexem(codeline);
-		//cout << infix.size();// << ' ' << varmap.size();
+		//cout << infix.size() << endl;// << ' ' << varmap.size();
 		//cout << static_cast<Operator *>(infix[1])->getType();
+		//for (int i = 0; i < infix.size(); i++) {
+		//	cout << "i: " << i << " op: " << infix[i]->getLexemType() << endl;
+		//}
 		postfix = buildPostfix(infix);
-		//cout << postfix.size();
-		//cout << postfix.size() << ' ' << varmap.size();
+		//cout << postfix.size() << endl;
+		//cout << postfix.size() << ' ' << varmap.size() << endl;
+		//for (int i = 0; i < postfix.size(); i++) {
+		//	cout << "i: " << i << " op: " << postfix[i]->getLexemType() << endl;
+		//}
 		value = evaluatePostfix(postfix);
 		cout << value << endl;
 	}
