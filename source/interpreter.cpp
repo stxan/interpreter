@@ -219,46 +219,13 @@ int Operator::evaluateNum(int a, int b) {
 }
 
 int Operator::evaluateVar(Variable *var, int b) {
-	switch(this->opertype) {
-		case PLUS:
-			return var->getValue() + b;
-		case MINUS:
-			return var->getValue() - b;
-		case MULT:
-			return var->getValue() * b;
-		case ASSIGN:
-			var->setValue(b);
-			return b;
-		case OR:
-			return var->getValue() or b;
-		case AND:
-			return var->getValue() and b;
-		case BITOR:
-			return var->getValue() | b;
-		case XOR:
-			return var->getValue() ^ b;
-		case BITAND:
-			return var->getValue() & b;
-		case EQ:
-			return var->getValue() == b;
-		case NEQ:
-			return var->getValue() != b;
-		case LEQ:
-			return var->getValue() <= b;
-		case LT:
-			return var->getValue() < b;
-		case GEQ:
-			return var->getValue() >= b;
-		case GT:
-			return var->getValue() > b;
-		case SHL:
-			return var->getValue() << b;
-		case SHR:
-			return var->getValue() >> b;
-		case DIV:
-			return (b == 0) ? 0 : (var->getValue() / b);
-		case MOD:
-			return var->getValue() % b;
+	int a = var->getValue();
+	if (this->opertype != ASSIGN) {
+		return evaluateNum(a, b);
+	}
+	else {
+		var->setValue(b);
+		return b;
 	}
 }
 
@@ -374,7 +341,8 @@ bool isRightAssociated(OPERATOR opType) {
 	return false;
 }
 
-void binaryOperBuildPostfix(stack<Lexem *> & stack, vector<Lexem *> & infix, vector<Lexem *> & postfix, OPERATOR operType, int i) {
+void binaryOperBuildPostfix(stack<Lexem *> & stack, vector<Lexem *> & infix,
+							 vector<Lexem *> & postfix, OPERATOR operType, int i) {
 	if(stack.size() != 0) {
 		if (isRightAssociated(operType)) {
 			while (stack.size() != 0 && static_cast<Operator *>(stack.top())->getPriority() > 
@@ -394,7 +362,8 @@ void binaryOperBuildPostfix(stack<Lexem *> & stack, vector<Lexem *> & infix, vec
 	}
 }
 
-void OperBuildPosfix(stack<Lexem *> & stack, vector<Lexem *> & infix, vector<Lexem *> & postfix, int i) {
+void OperBuildPosfix(stack<Lexem *> & stack, vector<Lexem *> & infix,
+						 vector<Lexem *> & postfix, int i) {
 	OPERATOR operType = static_cast<Operator *>(infix[i])->getType(	);
 	if (operType == LBRACKET) {
 		stack.push(infix[i]);
