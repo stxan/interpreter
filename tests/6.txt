@@ -1,0 +1,7 @@
+i := 1
+s := 0
+while i < 4 then
+	s := s + i
+	i := i + 1
+endwhile
+i := 0

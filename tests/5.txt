@@ -1,0 +1,12 @@
+x := 4
+y := 17
+if x < 3 then
+	x := x + 3
+else
+	x := 10
+endif
+
+while x != y then
+	x := x + 1
+endwhile
+z := 100

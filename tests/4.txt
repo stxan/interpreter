@@ -1,6 +1,6 @@
-x := 3
-y := x + 4
-goto L
 x := 2
+y := x + 3
+goto L
+x := 3
 L:
-y := 5
+x := 4
