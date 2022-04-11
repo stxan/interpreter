@@ -21,6 +21,7 @@ enum LEXEM_TYPE {
 };
 
 enum OPERATOR {
+	PRINT,
 	IF, THEN,
 	ELSE, ENDIF,
 	WHILE, ENDWHILE,
@@ -43,6 +44,7 @@ enum OPERATOR {
 };
 
 int PRIORITY[] = {
+	-1,
 	-1, -1,
 	-1, -1,
 	-1, -1,
@@ -62,6 +64,7 @@ int PRIORITY[] = {
 };
 
 string OPERTEXT[] = {
+	"print",
 	"if", "then",
 	"else", "endif",
 	"while", "endwhile",
@@ -485,6 +488,10 @@ void OperBuildPosfix(stack<Lexem *> & stack, vector<Lexem *> & infix,
 		stack.pop();
 		return;
 	}
+	if (operType == PRINT) {
+		stack.push(infix[i]);
+		return;
+	}
 	if (operType == GOTO || operType == WHILE || operType == IF || operType == ELSE || operType == ENDWHILE) {
 		if (operType == GOTO) {
 			static_cast<Goto *>(infix[i])->setRow(labels[static_cast<Variable *>(infix[i + 1])->getName()]);
@@ -536,6 +543,7 @@ vector<Lexem *> buildPostfix(vector<Lexem *> infix) {
 
 int evaluatePostfix(vector<Lexem *> postfix, int row) {
 	stack <Lexem *> stack;
+	vector <Number *> newArr;
 	for (int i = 0; i < postfix.size(); i++) {
 		if (postfix[i]->getLexemType() == NUMBER || postfix[i]->getLexemType() == VAR) {
 			if (postfix[i]->getLexemType() == VAR) {
@@ -562,15 +570,26 @@ int evaluatePostfix(vector<Lexem *> postfix, int row) {
 					return row + 1;
 				}
 			}
+			if (lexemop->getType() == PRINT) {
+				int variable_to_print = static_cast<Number *>(stack.top())->getValue();
+				cout << static_cast<Variable *>(stack.top())->getValue() << endl;
+				stack.pop();
+
+				return row + 1;
+			}
 			Lexem *value2 = stack.top();
 			stack.pop();
 			Lexem *value1 = stack.top();
 			stack.pop();
 			stack.push(new Number(lexemop->evaluate(value1, value2)));
+			newArr.push_back(static_cast<Number *>(stack.top()));
 		}
 	}
+	for (int i = 0; i < newArr.size(); i++) {
+		delete(newArr[i]);
+	}
 	int ans = static_cast<Number *>(stack.top())->getValue();
-	cout << ans << endl;
+	// cout << ans << endl;
 	stack.pop();
 	return row + 1;
 }
@@ -604,6 +623,14 @@ void print(vector<Lexem *> vec) {
 	}	
 } 
 
+void remove(vector<Lexem *> infix) {
+	for (int i = 0; i < infix.size(); i++) {
+		if (infix[i] != nullptr) {
+			delete(infix[i]);
+		}
+	}
+}
+
 int main() {
 	string codeline;
 	vector < vector<Lexem *> > infixLines, postfixLines;
@@ -618,6 +645,10 @@ int main() {
 	initJumps(infixLines);
 	for (const auto &infix: infixLines) {
 		postfixLines.push_back(buildPostfix(infix));
+	}
+
+	for (int i = 0; i < infixLines.size(); i++) {
+		remove(infixLines[i]);
 	}
 
 	for (int i = 0; i < postfixLines.size(); i++) {

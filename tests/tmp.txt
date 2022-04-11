@@ -1,0 +1,11 @@
+i := 0
+j := 0
+z := 3
+while i < 5 then
+	j := 0
+	while j < 5 then
+		print z
+		j := j + 1
+	endwhile
+	i := i + 1
+endwhile

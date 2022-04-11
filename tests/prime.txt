@@ -1,0 +1,17 @@
+i := 2
+j := 2
+flag := 0
+while i < 20 then
+	while j < i then
+		if i % j == 0 then
+			flag := 1
+		endif
+		j := j + 1
+	endwhile
+	if flag == 0 then
+		print i
+	endif
+	flag := 0
+	i := i + 1
+	j := 2
+endwhile
