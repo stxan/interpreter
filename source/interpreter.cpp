@@ -88,6 +88,7 @@ class Lexem {
 	LEXEM_TYPE lexem_type;
 public:
 	Lexem() {}
+	virtual ~Lexem() {}
 	LEXEM_TYPE getLexemType();
 	void setLexemType(LEXEM_TYPE type);
 	friend vector<Lexem *> parseLexem(string codeline);
@@ -585,12 +586,12 @@ int evaluatePostfix(vector<Lexem *> postfix, int row) {
 			newArr.push_back(static_cast<Number *>(stack.top()));
 		}
 	}
-	for (int i = 0; i < newArr.size(); i++) {
-		delete(newArr[i]);
-	}
 	int ans = static_cast<Number *>(stack.top())->getValue();
 	// cout << ans << endl;
 	stack.pop();
+	for (int i = 0; i < newArr.size(); i++) {
+		delete newArr[i];
+	}
 	return row + 1;
 }
 
@@ -626,7 +627,7 @@ void print(vector<Lexem *> vec) {
 void remove(vector<Lexem *> infix) {
 	for (int i = 0; i < infix.size(); i++) {
 		if (infix[i] != nullptr) {
-			delete(infix[i]);
+			delete infix[i];
 		}
 	}
 }
@@ -647,9 +648,6 @@ int main() {
 		postfixLines.push_back(buildPostfix(infix));
 	}
 
-	for (int i = 0; i < infixLines.size(); i++) {
-		remove(infixLines[i]);
-	}
 
 	for (int i = 0; i < postfixLines.size(); i++) {
 		print(postfixLines[i]);
@@ -664,5 +662,11 @@ int main() {
 	 	else 
 	 		row++;
 	}
+
+	
+	for (int i = 0; i < infixLines.size(); i++) {
+		remove(infixLines[i]);
+	}
+
 	return 0;
 }
