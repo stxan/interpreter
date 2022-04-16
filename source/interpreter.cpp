@@ -27,10 +27,6 @@ enum OPERATOR {
 	WHILE, ENDWHILE,
 	GOTO, ASSIGN, COLON,
 	LBRACKET, RBRACKET,
-<<<<<<< HEAD
-	ASSIGN,
-=======
->>>>>>> dev-main
 	OR,
 	AND,
 	BITOR,
@@ -54,10 +50,6 @@ int PRIORITY[] = {
 	-1, -1,
 	-1, 0, -1,
 	-1, -1,
-<<<<<<< HEAD
-	0,
-=======
->>>>>>> dev-main
 	1,
 	2,
 	3,
@@ -72,17 +64,12 @@ int PRIORITY[] = {
 };
 
 string OPERTEXT[] = {
-<<<<<<< HEAD
-	"(", ")",
-	"=",
-=======
 	"print",
 	"if", "then",
 	"else", "endif",
 	"while", "endwhile",
 	"goto", ":=", ":",
 	"(", ")",
->>>>>>> dev-main
 	"or",
 	"and",
 	"|",
@@ -320,9 +307,6 @@ bool isLetter(char ch) {
 	return false;
 }
 
-<<<<<<< HEAD
-
-=======
 
 
 void initLabels(vector<Lexem *> &infix, int row) {
@@ -388,20 +372,15 @@ void initJumps(vector< vector <Lexem *> > infixes) {
 }
 
 
->>>>>>> dev-main
 Operator *check_operator(string codeline, int *i) {
 	int n = sizeof(OPERTEXT) / sizeof(string);
 	for (int op = 0; op < n; op++) {
 		string subcodeline = 
 			codeline.substr(*i, OPERTEXT[op].size());
 		if (OPERTEXT[op] == subcodeline) {
-<<<<<<< HEAD
-			(*i) += subcodeline.size() - 1;
-=======
 			(*i) += subcodeline.size();
 			if (op == GOTO || op == IF || op == ELSE || op == WHILE || op == ENDWHILE || op == ENDIF)
 				return new Goto(OPERATOR(op));
->>>>>>> dev-main
 			return new Operator(OPERATOR(op));
 		}
 	}
@@ -437,14 +416,9 @@ Variable *check_var(string codeline, int *i) {
 
 vector<Lexem *> parseLexem(string codeline) {
 	vector<Lexem *> infix;
-<<<<<<< HEAD
-	for (int i = 0; i < codeline.size(); i++) {
-		if (codeline[i] == ' ' || codeline[i] == '\t') {
-=======
 	for (int i = 0; i < codeline.size();) {
 		if (codeline[i] == ' ' || codeline[i] == '\t') {
 			i++;
->>>>>>> dev-main
 			continue;
 		}
 		Number *ptr_n = check_number(codeline, &i);
@@ -452,21 +426,6 @@ vector<Lexem *> parseLexem(string codeline) {
 			infix.push_back(ptr_n);
 			continue;
 		}
-<<<<<<< HEAD
-		else {
-			Variable *ptr_v = check_var(codeline, &i);
-			if (ptr_v) {
-				infix.push_back(ptr_v);
-			}
-			else {
-				Operator *ptr_o = check_operator(codeline, &i);
-				if (ptr_o) {
-					infix.push_back(ptr_o);
-				}
-			}
-		}
-		
-=======
 		
 		Operator *ptr_o = check_operator(codeline, &i);
 		if (ptr_o) {
@@ -481,7 +440,6 @@ vector<Lexem *> parseLexem(string codeline) {
 		}
 		
 		i++;
->>>>>>> dev-main
 	}
 	return infix;
 }
@@ -679,24 +637,7 @@ int main() {
 	vector < vector<Lexem *> > infixLines, postfixLines;
 	int value;
 	while (std::getline(cin, codeline)) {
-<<<<<<< HEAD
-		infix = parseLexem(codeline);
-		//cout << infix.size() << endl;// << ' ' << varmap.size();
-		//cout << static_cast<Operator *>(infix[1])->getType();
-		//for (int i = 0; i < infix.size(); i++) {
-		//	cout << "i: " << i << " op: " << infix[i]->getLexemType() << endl;
-		//}
-		postfix = buildPostfix(infix);
-		//cout << postfix.size() << endl;
-		//cout << postfix.size() << ' ' << varmap.size() << endl;
-		//for (int i = 0; i < postfix.size(); i++) {
-		//	cout << "i: " << i << " op: " << postfix[i]->getLexemType() << endl;
-		//}
-		value = evaluatePostfix(postfix);
-		cout << value << endl;
-=======
 		infixLines.push_back(parseLexem(codeline));
->>>>>>> dev-main
 	}
 
 	for (int row = 0; row < infixLines.size(); row++) {
