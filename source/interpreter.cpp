@@ -1,50 +1,9 @@
-#include <iostream>
-#include <vector>
-#include <string>
-#include <stack>
-#include <map>
+#include <interpreter.h>
 
-using std::vector;
-using std::string;
-using std::stack;
-using std::cin;
-using std::cout;
-using std::endl;
-using std::map;
-using std::pair;
 
 map<string, int> varmap;
 map<string, int> labels;
 map<string, vector<int> > arrayTable;
-
-enum LEXEM_TYPE {
-	NUMBER, OP, VAR, ARR
-};
-
-enum OPERATOR {
-	PRINT,
-	IF, THEN,
-	ELSE, ENDIF,
-	WHILE, ENDWHILE,
-	GOTO, ASSIGN, COLON,
-	ARRAY, DEREF,
-	LBRACKET, RBRACKET,
-	LQBRACKET, RQBRACKET,
-	OR,
-	AND,
-	BITOR,
-	XOR,
-	BITAND,
-	EQ, NEQ,
-	LEQ, SHL,
-	GEQ, SHR,
-	LT, GT,
-	/*LEQ, LT,
-	GEQ, GT,
-	SHL, SHR,*/
-	PLUS, MINUS,
-	MULT, DIV, MOD
-};
 
 int PRIORITY[] = {
 	-1,
@@ -89,82 +48,6 @@ string OPERTEXT[] = {
 	"+", "-",
 	"*", "/", "%"
 };
-
-
-class Lexem {
-	LEXEM_TYPE lexem_type;
-public:
-	Lexem() {}
-	virtual ~Lexem() {}
-	LEXEM_TYPE getLexemType();
-	void setLexemType(LEXEM_TYPE type);
-	friend vector<Lexem *> parseLexem(string codeline);
-};
-
-class Number: public Lexem {
-	int value;
-public:
-	Number();
-	Number(int someValue);
-	int getValue();
-};
-
-class Variable;
-class ArrayElem;
-
-class Operator: public Lexem {
-	OPERATOR opertype;
-public:
-	Operator();
-	Operator(OPERATOR status);
-	int evaluateNum(int a, int b);
-	int evaluateVar(Variable *var, int b);
-	int evaluateArr(ArrayElem *array, int val);
-	OPERATOR getType();
-	int getPriority();
-	int evaluate(Lexem *left, Lexem *right);
-};
-
-class Variable: public Lexem {
-	string name;
-	//int value;
-public:
-	Variable(const string & name);
-	int getValue();
-	string getName();
-	void setValue(int value);
-	bool inLabelTable();
-};
-
-class Goto: public Operator {
-	int row;
-public:
-	enum { UNDEFINED = -INT32_MAX };
-	Goto(OPERATOR optype) : Operator(optype) {
-		row = UNDEFINED;
-	}
-	void setRow(int row) {
-		this->row = row;
-	}
-	int getRow() {
-		return row;
-	}
-};
-
-
-class ArrayElem: public Lexem {
-	string name;
-	int index;
-public:
-	void initArray(string name, int capacity);
-	string getName();
-	int getIndex();
-	int getValue();
-	void setValue(int val);
-	ArrayElem(Variable *array, int capacity);
-	// ArrayElem(OPERATOR optype) : Operator(optype) {}
-};
-
 ArrayElem::ArrayElem(Variable *array, int index) {
 	name = static_cast<Variable *>(array)->getName();
 	this->index = index;
@@ -191,14 +74,6 @@ void ArrayElem::setValue(int val) {
 	arrayTable[name][index] = val;
 }
 
-class Dereference: public Operator {
-public:
-	Dereference(OPERATOR optype): Operator(optype) {}
-	ArrayElem *getValue(Variable *array, int index) {
-		return new ArrayElem(array, index);
-	}
-
-};
 
 
 
@@ -766,53 +641,4 @@ void remove(vector<Lexem *> infix) {
 			delete infix[i];
 		}
 	}
-}
-
-int main() {
-	string codeline;
-	vector < vector<Lexem *> > infixLines, postfixLines;
-	int value;
-	while (std::getline(cin, codeline)) {
-		infixLines.push_back(parseLexem(codeline));
-	}
-
-	for (int row = 0; row < infixLines.size(); row++) {
-		initLabels(infixLines[row], row);
-	}
-	initJumps(infixLines);
-	for (const auto &infix: infixLines) {
-		postfixLines.push_back(buildPostfix(infix));
-	}
-
-	// for (int i = 0; i < postfixLines.size(); i++) {
-	// 	print(postfixLines[i]);
-	// 	cout << endl;
-	// }
-
-
-	 int row = 0;
-	 while (0 <= row && row < postfixLines.size()) {
-	 	if (postfixLines[row].size() != 0) {
-	 		row = evaluatePostfix(postfixLines[row], row);
-	 	}
-	 	else 
-	 		row++;
-	}
-
-	
-	for (int i = 0; i < postfixLines.size(); i++) {
-		for (int j = 0; j < postfixLines[i].size(); i++) {
-			if (postfixLines[i][j]->getLexemType() == OP) {
-				if (static_cast<Operator *>(postfixLines[i][j])->getType() == DEREF) {
-					delete postfixLines[i][j];
-				}
-			}
-		}
-	}
-	for (int i = 0; i < infixLines.size(); i++) {
-		remove(infixLines[i]);
-	}
-
-
-	return 0;
 }
