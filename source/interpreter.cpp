@@ -15,9 +15,10 @@ using std::pair;
 
 map<string, int> varmap;
 map<string, int> labels;
+map<string, vector<int> > arrayTable;
 
 enum LEXEM_TYPE {
-	NUMBER, OP, VAR
+	NUMBER, OP, VAR, ARR
 };
 
 enum OPERATOR {
@@ -26,7 +27,9 @@ enum OPERATOR {
 	ELSE, ENDIF,
 	WHILE, ENDWHILE,
 	GOTO, ASSIGN, COLON,
+	ARRAY, DEREF,
 	LBRACKET, RBRACKET,
+	LQBRACKET, RQBRACKET,
 	OR,
 	AND,
 	BITOR,
@@ -50,6 +53,8 @@ int PRIORITY[] = {
 	-1, -1,
 	-1, 0, -1,
 	-1, -1,
+	-1, -1,
+	-1, -1,
 	1,
 	2,
 	3,
@@ -69,7 +74,9 @@ string OPERTEXT[] = {
 	"else", "endif",
 	"while", "endwhile",
 	"goto", ":=", ":",
+	"array", "deref",
 	"(", ")",
+	"[", "]",
 	"or",
 	"and",
 	"|",
@@ -103,6 +110,7 @@ public:
 };
 
 class Variable;
+class ArrayElem;
 
 class Operator: public Lexem {
 	OPERATOR opertype;
@@ -111,6 +119,7 @@ public:
 	Operator(OPERATOR status);
 	int evaluateNum(int a, int b);
 	int evaluateVar(Variable *var, int b);
+	int evaluateArr(ArrayElem *array, int val);
 	OPERATOR getType();
 	int getPriority();
 	int evaluate(Lexem *left, Lexem *right);
@@ -142,6 +151,54 @@ public:
 	}
 };
 
+
+class ArrayElem: public Lexem {
+	string name;
+	int index;
+public:
+	void initArray(string name, int capacity);
+	string getName();
+	int getIndex();
+	int getValue();
+	void setValue(int val);
+	ArrayElem(Variable *array, int capacity);
+	// ArrayElem(OPERATOR optype) : Operator(optype) {}
+};
+
+ArrayElem::ArrayElem(Variable *array, int index) {
+	name = static_cast<Variable *>(array)->getName();
+	this->index = index;
+	setLexemType(ARR);
+}
+
+string ArrayElem::getName() {
+	return name;
+}
+
+int ArrayElem::getIndex() {
+	return index;
+}
+
+void ArrayElem::initArray(string name, int capacity) {
+	arrayTable[name] = vector<int>(capacity);
+}
+
+int ArrayElem::getValue() {
+	return arrayTable[name][index];
+}
+
+void ArrayElem::setValue(int val) {
+	arrayTable[name][index] = val;
+}
+
+class Dereference: public Operator {
+public:
+	Dereference(OPERATOR optype): Operator(optype) {}
+	ArrayElem *getValue(Variable *array, int index) {
+		return new ArrayElem(array, index);
+	}
+
+};
 
 
 
@@ -271,6 +328,17 @@ int Operator::evaluateVar(Variable *var, int b) {
 	}
 }
 
+int Operator::evaluateArr(ArrayElem *elem, int val) {
+	int a = elem->getValue();
+	if (this->opertype != ASSIGN) {
+		return evaluateNum(a, val);
+	}
+	else {
+		elem->setValue(val);
+		return val;
+	}
+}
+
 int Operator::evaluate(Lexem *left, Lexem *right) {
 	LEXEM_TYPE l = left->getLexemType(), r = right->getLexemType();
 	if (l == NUMBER && r == NUMBER) {
@@ -279,11 +347,26 @@ int Operator::evaluate(Lexem *left, Lexem *right) {
 	if (l == NUMBER && r == VAR) {
 		return evaluateNum(static_cast<Number *>(left)->getValue(), static_cast<Variable *>(right)->getValue());
 	}
+	if (l == NUMBER && r == ARR) {
+		return evaluateNum(static_cast<Number *>(left)->getValue(), static_cast<ArrayElem *>(right)->getValue());
+	}
 	if (l == VAR && r == NUMBER) {
 		return evaluateVar(static_cast<Variable *>(left), static_cast<Number *>(right)->getValue());
 	}
 	if (l == VAR && r == VAR) {
 		return evaluateVar(static_cast<Variable *>(left), static_cast<Variable *>(right)->getValue());
+	}
+	if (l == VAR && r == ARR) {
+		return evaluateVar(static_cast<Variable *>(left), static_cast<ArrayElem *>(right)->getValue());
+	}
+	if (l == ARR && r == ARR) {
+		return evaluateArr(static_cast<ArrayElem *>(left), static_cast<ArrayElem *>(right)->getValue());
+	}
+	if (l == ARR && r == NUMBER) {
+		return evaluateArr(static_cast<ArrayElem *>(left), static_cast<Number *>(right)->getValue());		
+	}
+	if (l == ARR && r == VAR) {
+		return evaluateArr(static_cast<ArrayElem *>(left), static_cast<Variable *>(right)->getValue());
 	}
 }
 
@@ -379,8 +462,12 @@ Operator *check_operator(string codeline, int *i) {
 			codeline.substr(*i, OPERTEXT[op].size());
 		if (OPERTEXT[op] == subcodeline) {
 			(*i) += subcodeline.size();
-			if (op == GOTO || op == IF || op == ELSE || op == WHILE || op == ENDWHILE || op == ENDIF)
+			if (op == GOTO || op == IF || op == ELSE || op == WHILE || op == ENDWHILE || op == ENDIF) {
 				return new Goto(OPERATOR(op));
+			}
+			if (op == DEREF) {
+				return new Dereference(OPERATOR(OP));
+			}
 			return new Operator(OPERATOR(op));
 		}
 	}
@@ -489,6 +576,25 @@ void OperBuildPosfix(stack<Lexem *> & stack, vector<Lexem *> & infix,
 		stack.pop();
 		return;
 	}
+	if (operType == LQBRACKET) {
+		stack.push(infix[i]);
+		return;
+	}
+	if (operType == RQBRACKET) {
+		Lexem *tmp = stack.top();
+		while (static_cast<Operator *>(tmp)->getType() != LQBRACKET) {
+			postfix.push_back(tmp);
+			stack.pop();
+			tmp = stack.top();
+		}
+		stack.pop();
+		postfix.push_back(new Operator(DEREF));
+		return;
+	}
+	if (operType == ARRAY) {
+		stack.push(infix[i]);
+		return;
+	}
 	if (operType == PRINT) {
 		stack.push(infix[i]);
 		return;
@@ -529,7 +635,7 @@ vector<Lexem *> buildPostfix(vector<Lexem *> infix) {
 			continue;
 		}
 
-		else if((infix[i]->getLexemType()) == OP) {
+		if((infix[i]->getLexemType()) == OP) {
 			OperBuildPosfix(stack, infix, postfix, i);
 		}
 	}
@@ -549,12 +655,13 @@ int evaluatePostfix(vector<Lexem *> postfix, int row) {
 		if (postfix[i]->getLexemType() == NUMBER || postfix[i]->getLexemType() == VAR) {
 			if (postfix[i]->getLexemType() == VAR) {
 				if (static_cast<Variable *>(postfix[i])->inLabelTable()) {
-					continue;
+					// continue;
 				}
 			}
 			stack.push(postfix[i]);
 			continue;
 		}
+		
 		if (postfix[i]->getLexemType() == OP) {
 			Operator *lexemop = static_cast<Operator *>(postfix[i]);
 			if (lexemop->getType() == GOTO || lexemop->getType() == ELSE || lexemop->getType() == ENDWHILE) {
@@ -572,11 +679,39 @@ int evaluatePostfix(vector<Lexem *> postfix, int row) {
 				}
 			}
 			if (lexemop->getType() == PRINT) {
-				int variable_to_print = static_cast<Number *>(stack.top())->getValue();
-				cout << static_cast<Variable *>(stack.top())->getValue() << endl;
+				// cout << "P" << stack.size() << stack.top()->getLexemType() <<  endl;
+				if (stack.top()->getLexemType() == NUMBER) {
+					cout << static_cast<Number *>(stack.top())->getValue() << endl;					
+				}
+				if (stack.top()->getLexemType() == VAR) {
+					cout << static_cast<Variable *>(stack.top())->getValue() << endl;
+				}
+				if (stack.top()->getLexemType() == ARR) {
+					cout << static_cast<ArrayElem *>(stack.top())->getValue() << endl;					
+				}
 				stack.pop();
 
 				return row + 1;
+			}
+			if (lexemop->getType() == ARRAY) {
+				Lexem *r_oper = stack.top();
+				stack.pop();
+				Lexem *l_oper = stack.top();
+				stack.pop();
+				static_cast<ArrayElem *>(postfix[i])->initArray(static_cast<Variable *>(l_oper)->getName(), static_cast<Number *>(r_oper)->getValue());
+				return row + 1;
+			}
+			if (lexemop->getType() == DEREF) {
+				Lexem *r_oper = stack.top();
+				stack.pop();
+				Lexem *l_oper = stack.top();
+				stack.pop();
+				if (r_oper->getLexemType() == VAR) {
+					stack.push(static_cast<Dereference *>(lexemop)->getValue(static_cast<Variable *>(l_oper), static_cast<Variable *>(r_oper)->getValue()));				
+					continue;
+				}
+				stack.push(static_cast<Dereference *>(lexemop)->getValue(static_cast<Variable *>(l_oper), static_cast<Number *>(r_oper)->getValue()));
+				continue;
 			}
 			Lexem *value2 = stack.top();
 			stack.pop();
@@ -584,6 +719,7 @@ int evaluatePostfix(vector<Lexem *> postfix, int row) {
 			stack.pop();
 			stack.push(new Number(lexemop->evaluate(value1, value2)));
 			newArr.push_back(static_cast<Number *>(stack.top()));
+			continue;
 		}
 	}
 	int ans = static_cast<Number *>(stack.top())->getValue();
@@ -648,11 +784,11 @@ int main() {
 		postfixLines.push_back(buildPostfix(infix));
 	}
 
+	// for (int i = 0; i < postfixLines.size(); i++) {
+	// 	print(postfixLines[i]);
+	// 	cout << endl;
+	// }
 
-	for (int i = 0; i < postfixLines.size(); i++) {
-		print(postfixLines[i]);
-		cout << endl;
-	}
 
 	 int row = 0;
 	 while (0 <= row && row < postfixLines.size()) {
@@ -664,9 +800,19 @@ int main() {
 	}
 
 	
+	for (int i = 0; i < postfixLines.size(); i++) {
+		for (int j = 0; j < postfixLines[i].size(); i++) {
+			if (postfixLines[i][j]->getLexemType() == OP) {
+				if (static_cast<Operator *>(postfixLines[i][j])->getType() == DEREF) {
+					delete postfixLines[i][j];
+				}
+			}
+		}
+	}
 	for (int i = 0; i < infixLines.size(); i++) {
 		remove(infixLines[i]);
 	}
+
 
 	return 0;
 }
