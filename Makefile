@@ -1,2 +1,2 @@
 all:
-	g++ source/interpreter.cpp -o bin/interp -fsanitize=leak,address
+	g++ usr/example.cpp src/interpreter.cpp \-I headers/ -o bin/example
